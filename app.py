@@ -13,7 +13,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- 1. CONFIG & FUTURISTIC UI ---
-st.set_page_config(page_title="Nexus AI Agent", page_icon="🧬", layout="wide")
+# CHANGED: Page Title
+st.set_page_config(page_title="AI Agent", page_icon="🧬", layout="wide")
 
 def inject_custom_css():
     st.markdown(
@@ -131,7 +132,6 @@ def agent_node(state: AgentState):
     if not api_key:
         return {"messages": [("assistant", "⚠️ **System Alert:** API Key missing. Check Settings.")]}
 
-    # CHANGED MODEL NAME TO FIX 404 ERROR
     llm = ChatGoogleGenerativeAI(
         model="gemini-1.5-flash-latest", 
         temperature=0,
@@ -163,7 +163,7 @@ app = create_graph()
 # Title Section with Neon Effect
 st.markdown("""
     <div class="glass-card" style="text-align: center;">
-        <h1 class="neon-text">NEXUS AGENT</h1>
+        <h1 class="neon-text">AI AGENT</h1>
         <p style="color: #94a3b8; margin-top: -10px;">Autonomous Research Intelligence System</p>
     </div>
 """, unsafe_allow_html=True)
