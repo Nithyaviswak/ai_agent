@@ -2,7 +2,7 @@ import streamlit as st
 import os
 from typing import Annotated, Literal, TypedDict
 from langchain_core.tools import tool
-from langchain_core.messages import AIMessage # <--- ADDED THIS IMPORT
+from langchain_core.messages import AIMessage  # <--- CRITICAL IMPORT ADDED
 from langchain_google_genai import ChatGoogleGenerativeAI
 import google.generativeai as genai
 from langchain_community.tools import DuckDuckGoSearchRun
@@ -94,6 +94,7 @@ def agent_node(state: AgentState):
 
 def should_continue(state: AgentState) -> Literal["tools", "__end__"]:
     last_msg = state["messages"][-1]
+    # Check if the message has tool calls
     if hasattr(last_msg, 'tool_calls') and last_msg.tool_calls:
         return "tools"
     return "__end__"
