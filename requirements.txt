@@ -5,3 +5,4 @@ langchain-community
 langgraph
 duckduckgo-search
 python-dotenv
+google-generativeai
