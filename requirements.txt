@@ -1,7 +1,7 @@
 streamlit
 langchain
-langchain-google-genai
+langchain-google-genai>=1.0.3
+langchain-community
 langgraph
 duckduckgo-search
 python-dotenv
-langchain-community
