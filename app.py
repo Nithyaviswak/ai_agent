@@ -41,17 +41,17 @@ inject_custom_css()
 # --- 2. MODEL SELECTOR (SIDEBAR) ---
 with st.sidebar:
     st.header("⚙️ Settings")
-    st.markdown("If you hit a 'Quota' error, switch to a Lite or 2.5 model below:")
+    st.markdown("Use 'Latest' models for highest free limits:")
     
-    # UPDATED LIST: Prioritizing "Lite" and "2.5" which often have separate quotas
+    # CRITICAL UPDATE: Using the generic aliases that usually have 1500 req/day limits
     selected_model = st.selectbox(
         "Select AI Model:",
         [
-            "gemini-2.0-flash-lite-preview-02-05", # <--- TRY THIS FIRST (Cheaper/Faster)
-            "gemini-2.5-flash",                     # <--- NEWEST
-            "gemini-2.0-flash",                     # (Currently Rate Limited for you)
-            "gemini-2.0-pro-exp-02-05",
-            "gemini-2.0-flash-exp"
+            "gemini-flash-latest",   # <--- THE STABLE WORKHORSE (High Limit)
+            "gemini-pro-latest",     # <--- SMARTER STABLE MODEL
+            "gemini-2.5-flash",      # <--- BRAND NEW (Might work)
+            "gemini-2.0-flash-lite-preview-02-05",
+            "gemini-2.0-flash"
         ],
         index=0
     )
@@ -87,7 +87,7 @@ def agent_node(state: AgentState):
     except Exception as e:
         error_msg = f"❌ **Error with {selected_model}:** {str(e)}"
         
-        # Diagnostic only runs if we crash
+        # Diagnostic
         try:
             genai.configure(api_key=api_key)
             available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
