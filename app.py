@@ -3,6 +3,7 @@ import os
 from typing import Annotated, Literal, TypedDict
 from langchain_core.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
+import google.generativeai as genai  # Direct access for diagnostics
 from langchain_community.tools import DuckDuckGoSearchRun
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
@@ -12,7 +13,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# --- 1. CONFIG & UI ---
+# --- 1. CONFIG & UI SETUP ---
 st.set_page_config(page_title="AI Agent", page_icon="🧬", layout="wide")
 
 def inject_custom_css():
@@ -36,7 +37,21 @@ def inject_custom_css():
 
 inject_custom_css()
 
-# --- 2. AGENT LOGIC ---
+# --- 2. MODEL SELECTOR (SIDEBAR) ---
+with st.sidebar:
+    st.header("⚙️ Settings")
+    st.markdown("If the agent crashes, try picking a different model below:")
+    
+    # Allow user to pick model manually
+    selected_model = st.selectbox(
+        "Select AI Model:",
+        ["gemini-1.5-flash", "gemini-pro", "gemini-1.5-pro", "gemini-1.0-pro"],
+        index=0
+    )
+    
+    st.info(f"Using: **{selected_model}**")
+
+# --- 3. AGENT LOGIC ---
 @tool
 def web_search(query: str):
     """Search the web for information."""
@@ -52,12 +67,12 @@ def agent_node(state: AgentState):
     api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
     
     if not api_key:
-        return {"messages": [("assistant", "⚠️ API Key missing. Check Settings.")]}
+        return {"messages": [("assistant", "⚠️ API Key missing.")]}
 
-    # SWITCHED TO GEMINI-PRO (More Stable)
+    # Use the model selected in the sidebar
     try:
         llm = ChatGoogleGenerativeAI(
-            model="gemini-pro", 
+            model=selected_model, 
             temperature=0, 
             google_api_key=api_key
         ).bind_tools(tools)
@@ -65,11 +80,21 @@ def agent_node(state: AgentState):
         return {"messages": [llm.invoke(state["messages"])]}
         
     except Exception as e:
-        return {"messages": [("assistant", f"❌ **Connection Error:** {str(e)}")]}
+        # DIAGNOSTIC: Connect directly to Google to see what IS allowed
+        error_msg = f"❌ **Error with {selected_model}:** {str(e)}"
+        
+        try:
+            genai.configure(api_key=api_key)
+            available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            formatted_list = "\n".join([f"- `{m}`" for m in available])
+            error_msg += f"\n\n🔍 **Google says your key CAN access these:**\n{formatted_list}"
+        except:
+            error_msg += "\n(Could not list available models)"
+            
+        return {"messages": [("assistant", error_msg)]}
 
 def should_continue(state: AgentState) -> Literal["tools", "__end__"]:
     last_msg = state["messages"][-1]
-    # Check if the message has tool calls
     if hasattr(last_msg, 'tool_calls') and last_msg.tool_calls:
         return "tools"
     return "__end__"
@@ -86,7 +111,7 @@ def create_graph():
 
 app = create_graph()
 
-# --- 3. UI LAYOUT ---
+# --- 4. UI LAYOUT ---
 st.markdown('<div class="glass-card" style="text-align: center;"><h1 class="neon-text">AI AGENT</h1><p style="color: #94a3b8;">Autonomous Research Intelligence</p></div>', unsafe_allow_html=True)
 
 col1, col2 = st.columns([1, 2])
@@ -110,10 +135,17 @@ with col2:
                     for k, v in event.items():
                         if k == "agent":
                             msg = v["messages"][0]
+                            # Check if it's an error message from our try/except block
+                            if "Google says your key CAN access" in str(msg.content):
+                                st.error(msg.content)
+                                status.update(label="❌ Configuration Error", state="error")
+                                st.stop()
+                            
                             if hasattr(msg, 'tool_calls') and msg.tool_calls:
                                 st.write(f"🌐 Searching: `{msg.tool_calls[0]['args'].get('query')}`")
                             else:
                                 st.write("⚡ Synthesizing...")
+                                
                 final = app.invoke(inputs)["messages"][-1].content
                 status.update(label="✅ Complete", state="complete", expanded=False)
                 st.markdown(f'<div class="glass-card"><h2 style="color:#f1f5f9;">Report</h2><div style="color: #cbd5e1;">{final}</div></div>', unsafe_allow_html=True)
@@ -121,7 +153,7 @@ with col2:
             except Exception as e:
                 st.error(f"❌ Error: {e}")
 
-# --- 4. FOOTER ---
+# --- 5. FOOTER ---
 st.markdown("""
     <div class="footer">
         <span style="color: #94a3b8; font-size: 0.9rem;">Engineered by <span style="color: #a855f7; font-weight:600;">R NITHYANANDACHARI</span></span>
