@@ -2,8 +2,9 @@ import streamlit as st
 import os
 from typing import Annotated, Literal, TypedDict
 from langchain_core.tools import tool
+from langchain_core.messages import AIMessage # <--- ADDED THIS IMPORT
 from langchain_google_genai import ChatGoogleGenerativeAI
-import google.generativeai as genai  # Direct access for diagnostics
+import google.generativeai as genai
 from langchain_community.tools import DuckDuckGoSearchRun
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
@@ -42,13 +43,11 @@ with st.sidebar:
     st.header("⚙️ Settings")
     st.markdown("If the agent crashes, try picking a different model below:")
     
-    # Allow user to pick model manually
     selected_model = st.selectbox(
         "Select AI Model:",
         ["gemini-1.5-flash", "gemini-pro", "gemini-1.5-pro", "gemini-1.0-pro"],
         index=0
     )
-    
     st.info(f"Using: **{selected_model}**")
 
 # --- 3. AGENT LOGIC ---
@@ -67,9 +66,8 @@ def agent_node(state: AgentState):
     api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
     
     if not api_key:
-        return {"messages": [("assistant", "⚠️ API Key missing.")]}
+        return {"messages": [AIMessage(content="⚠️ API Key missing.")]}
 
-    # Use the model selected in the sidebar
     try:
         llm = ChatGoogleGenerativeAI(
             model=selected_model, 
@@ -91,7 +89,8 @@ def agent_node(state: AgentState):
         except:
             error_msg += "\n(Could not list available models)"
             
-        return {"messages": [("assistant", error_msg)]}
+        # FIX: Return an AIMessage object, NOT a tuple
+        return {"messages": [AIMessage(content=error_msg)]}
 
 def should_continue(state: AgentState) -> Literal["tools", "__end__"]:
     last_msg = state["messages"][-1]
