@@ -41,14 +41,15 @@ inject_custom_css()
 # --- 2. MODEL SELECTOR (SIDEBAR) ---
 with st.sidebar:
     st.header("⚙️ Settings")
-    st.markdown("Select a model supported by your key:")
+    st.markdown("If you hit a 'Quota' error, switch to a Lite or 2.5 model below:")
     
-    # UPDATED LIST based on your diagnostic output
+    # UPDATED LIST: Prioritizing "Lite" and "2.5" which often have separate quotas
     selected_model = st.selectbox(
         "Select AI Model:",
         [
-            "gemini-2.0-flash", 
-            "gemini-2.0-flash-lite-preview-02-05", 
+            "gemini-2.0-flash-lite-preview-02-05", # <--- TRY THIS FIRST (Cheaper/Faster)
+            "gemini-2.5-flash",                     # <--- NEWEST
+            "gemini-2.0-flash",                     # (Currently Rate Limited for you)
             "gemini-2.0-pro-exp-02-05",
             "gemini-2.0-flash-exp"
         ],
@@ -84,9 +85,9 @@ def agent_node(state: AgentState):
         return {"messages": [llm.invoke(state["messages"])]}
         
     except Exception as e:
-        # DIAGNOSTIC: Connect directly to Google to see what IS allowed
         error_msg = f"❌ **Error with {selected_model}:** {str(e)}"
         
+        # Diagnostic only runs if we crash
         try:
             genai.configure(api_key=api_key)
             available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -139,10 +140,10 @@ with col2:
                     for k, v in event.items():
                         if k == "agent":
                             msg = v["messages"][0]
-                            # Check if it's an error message from our try/except block
-                            if "Google says your key CAN access" in str(msg.content):
+                            # Check for errors returned as content
+                            if "Error with" in str(msg.content):
                                 st.error(msg.content)
-                                status.update(label="❌ Configuration Error", state="error")
+                                status.update(label="❌ API Error", state="error")
                                 st.stop()
                             
                             if hasattr(msg, 'tool_calls') and msg.tool_calls:
@@ -155,7 +156,7 @@ with col2:
                 st.markdown(f'<div class="glass-card"><h2 style="color:#f1f5f9;">Report</h2><div style="color: #cbd5e1;">{final}</div></div>', unsafe_allow_html=True)
             
             except Exception as e:
-                st.error(f"❌ Error: {e}")
+                st.error(f"❌ Critical Error: {e}")
 
 # --- 5. FOOTER ---
 st.markdown("""
