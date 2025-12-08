@@ -4,3 +4,4 @@ langchain-google-genai
 langgraph
 duckduckgo-search
 python-dotenv
+langchain-community
