@@ -2,7 +2,7 @@ import streamlit as st
 import os
 from typing import Annotated, Literal, TypedDict
 from langchain_core.tools import tool
-from langchain_core.messages import AIMessage  # <--- CRITICAL IMPORT ADDED
+from langchain_core.messages import AIMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 import google.generativeai as genai
 from langchain_community.tools import DuckDuckGoSearchRun
@@ -41,11 +41,17 @@ inject_custom_css()
 # --- 2. MODEL SELECTOR (SIDEBAR) ---
 with st.sidebar:
     st.header("⚙️ Settings")
-    st.markdown("If the agent crashes, try picking a different model below:")
+    st.markdown("Select a model supported by your key:")
     
+    # UPDATED LIST based on your diagnostic output
     selected_model = st.selectbox(
         "Select AI Model:",
-        ["gemini-1.5-flash", "gemini-pro", "gemini-1.5-pro", "gemini-1.0-pro"],
+        [
+            "gemini-2.0-flash", 
+            "gemini-2.0-flash-lite-preview-02-05", 
+            "gemini-2.0-pro-exp-02-05",
+            "gemini-2.0-flash-exp"
+        ],
         index=0
     )
     st.info(f"Using: **{selected_model}**")
@@ -89,12 +95,10 @@ def agent_node(state: AgentState):
         except:
             error_msg += "\n(Could not list available models)"
             
-        # FIX: Return an AIMessage object, NOT a tuple
         return {"messages": [AIMessage(content=error_msg)]}
 
 def should_continue(state: AgentState) -> Literal["tools", "__end__"]:
     last_msg = state["messages"][-1]
-    # Check if the message has tool calls
     if hasattr(last_msg, 'tool_calls') and last_msg.tool_calls:
         return "tools"
     return "__end__"
