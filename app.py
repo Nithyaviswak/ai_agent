@@ -40,17 +40,16 @@ inject_custom_css()
 
 # --- 2. FAILOVER MODEL LIST ---
 MODEL_PRIORITY_LIST = [
-    "gemini-2.5-flash-live",    
-    "gemini-2.0-flash-live",         
-    "gemma-3-12b",
-    "gemma-3-27b",         
-    "gemma-3-4b",          
+    "gemini-2.0-flash-exp",    # Experimental often has higher limits than Preview
+    "gemini-exp-1206",         # 1206 Experimental (High Limit)
+    "gemini-2.0-pro-exp-02-05",# Pro Experimental
+    "gemma-3-27b-it",          # 14.4K Daily Limit! (From your table)
+    "gemma-3-12b-it",          # Backup High Limit
 ]
 
 with st.sidebar:
     st.header("⚙️ Settings")
     st.success(f"🛡️ **Failover System Active**\n\nUsing Experimental & Gemma models to bypass the 20/day limit.")
-
 # --- 3. AGENT LOGIC ---
 @tool
 def web_search(query: str):
