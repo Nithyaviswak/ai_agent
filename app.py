@@ -5,7 +5,7 @@ from langchain_core.tools import tool
 from langchain_core.messages import AIMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 import google.generativeai as genai
-from googlesearch import search as gsearch  # <--- NEW STABLE IMPORT
+from googlesearch import search as gsearch
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langgraph.graph.message import add_messages
@@ -41,15 +41,16 @@ inject_custom_css()
 # --- 2. MODEL SELECTOR (SIDEBAR) ---
 with st.sidebar:
     st.header("⚙️ Settings")
-    st.markdown("Choose a model. Use 'Flash Latest' for high daily limits:")
+    st.markdown("Choose a model. Try '1.5 Flash' for speed:")
     
+    # CRITICAL FIX: Explicitly added 1.5-flash (legacy) which has higher rate limits
     selected_model = st.selectbox(
         "Select AI Model:",
         [
-            "gemini-flash-latest",   # <--- BEST OPTION
-            "gemini-2.5-flash",
-            "gemini-2.0-flash-lite-preview-02-05", 
-            "gemini-pro",
+            "gemini-1.5-flash",        # <--- OLDER BUT FASTER (15 RPM)
+            "gemini-flash-lite-latest",# <--- LITE VERSION (Often good)
+            "gemini-flash-latest",     # (Points to 2.5, strict limit)
+            "gemini-2.0-flash-exp",
         ],
         index=0
     )
@@ -60,7 +61,6 @@ with st.sidebar:
 def web_search(query: str):
     """Search the web for information using Google Search."""
     try:
-        # Fetch top 5 results
         results = list(gsearch(query, num_results=5, advanced=True))
         formatted_results = "\n".join([f"- **{r.title}**: {r.description}" for r in results])
         return formatted_results if formatted_results else "No relevant results found."
@@ -90,6 +90,7 @@ def agent_node(state: AgentState):
     except Exception as e:
         error_msg = f"❌ **Error with {selected_model}:** {str(e)}"
         
+        # Diagnostic - helps us see what is actually available
         try:
             genai.configure(api_key=api_key)
             available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -106,7 +107,6 @@ def should_continue(state: AgentState) -> Literal["tools", "__end__"]:
         return "tools"
     return "__end__"
 
-# No caching to allow instant model switching
 def create_graph():
     workflow = StateGraph(AgentState)
     workflow.add_node("agent", agent_node)
