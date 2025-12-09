@@ -38,17 +38,20 @@ def inject_custom_css():
 
 inject_custom_css()
 
-# --- 2. FAILOVER MODEL LIST (EXPERIMENTAL ONLY) ---
-# We stick to "exp" models. They support tools AND often have high limits.
+# --- 2. ULTIMATE FAILOVER LIST ---
+# We prioritize 1.5 models because they have a separate, large daily quota (1500/day)
 MODEL_PRIORITY_LIST = [
-    "gemini-2.0-flash-exp",    # 1. Experimental Flash (Fast, High Limit)
-    "gemini-exp-1206",         # 2. December Experimental (Very Stable)
-    "gemini-2.0-pro-exp-02-05",# 3. Pro Experimental (Smart)
+    "gemini-1.5-flash-001",    # 1. High Limit (1500/day) - STABLE
+    "gemini-1.5-flash-8b",     # 2. High Limit - FAST
+    "gemini-1.5-flash",        # 3. Standard Alias
+    "gemini-1.5-pro-001",      # 4. High Intelligence
+    "gemini-pro",              # 5. Legacy 1.0 (Backup)
+    "gemini-2.0-flash-exp",    # 6. (Likely exhausted, but kept as backup)
 ]
 
 with st.sidebar:
     st.header("⚙️ Settings")
-    st.success(f"🛡️ **Failover System Active**\n\nUsing {len(MODEL_PRIORITY_LIST)} Experimental models.")
+    st.success(f"🛡️ **Failover System Active**\n\nScanning {len(MODEL_PRIORITY_LIST)} models. Prioritizing 1.5 Flash for stability.")
 
 # --- 3. AGENT LOGIC ---
 @tool
@@ -74,7 +77,7 @@ def agent_node(state: AgentState):
 
     last_error = ""
     
-    # LOOP THROUGH EXPERIMENTAL MODELS
+    # LOOP THROUGH 1.5 GENERATION MODELS FIRST
     for model_name in MODEL_PRIORITY_LIST:
         try:
             # Throttle slightly
@@ -91,10 +94,11 @@ def agent_node(state: AgentState):
             
         except Exception as e:
             last_error = str(e)
-            # If rate limit (429) or not found (404), continue to next model
+            # Log failure and try next model
+            print(f"Failed {model_name}: {last_error}")
             continue
             
-    # If we get here, everything failed
+    # If we get here, absolutely everything is dead
     return {"messages": [AIMessage(content=f"❌ **System Exhausted.** All models failed.\nLast Error: {last_error}")]}
 
 def should_continue(state: AgentState) -> Literal["tools", "__end__"]:
@@ -131,7 +135,7 @@ with col1:
 
 with col2:
     if st.session_state.get('run'):
-        with st.status("🔄 **Processing (Trying Exp Models)...**", expanded=True) as status:
+        with st.status("🔄 **Processing (Scanning 1.5 Models)...**", expanded=True) as status:
             inputs = {"messages": [("user", f"Research: '{st.session_state['topic']}'. Write a report.")]}
             try:
                 for event in app.stream(inputs):
