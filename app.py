@@ -38,18 +38,18 @@ def inject_custom_css():
 
 inject_custom_css()
 
-# --- 2. MODEL SELECTOR (SIDEBAR) ---
+# --- 2. FAILOVER MODEL LIST ---
+MODEL_PRIORITY_LIST = [
+    "gemini-2.0-flash-exp",    
+    "gemini-exp-1206",         
+    "gemini-2.0-pro-exp-02-05",
+    "gemma-3-27b-it",         
+    "gemma-3-12b-it",          
+]
+
 with st.sidebar:
     st.header("⚙️ Settings")
-    st.markdown("Using 'Flash Latest'. Slow mode enabled to prevent crashes.")
-    
-    # We stick to the one model we KNOW works, even if it has limits
-    selected_model = st.selectbox(
-        "Select AI Model:",
-        ["gemini-flash-latest"], 
-        index=0
-    )
-    st.info(f"Using: **{selected_model}**")
+    st.success(f"🛡️ **Failover System Active**\n\nUsing Experimental & Gemma models to bypass the 20/day limit.")
 
 # --- 3. AGENT LOGIC ---
 @tool
