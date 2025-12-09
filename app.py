@@ -5,7 +5,7 @@ from langchain_core.tools import tool
 from langchain_core.messages import AIMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 import google.generativeai as genai
-from langchain_community.tools import DuckDuckGoSearchRun
+from googlesearch import search as gsearch  # <--- NEW STABLE IMPORT
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langgraph.graph.message import add_messages
@@ -46,10 +46,10 @@ with st.sidebar:
     selected_model = st.selectbox(
         "Select AI Model:",
         [
-            "gemini-flash-latest",   # <--- BEST OPTION (Stable, High Limits)
-            "gemini-2.5-flash",      # <--- Newest Version
+            "gemini-flash-latest",   # <--- BEST OPTION
+            "gemini-2.5-flash",
             "gemini-2.0-flash-lite-preview-02-05", 
-            "gemini-pro",            # <--- Good backup
+            "gemini-pro",
         ],
         index=0
     )
@@ -58,9 +58,14 @@ with st.sidebar:
 # --- 3. AGENT LOGIC ---
 @tool
 def web_search(query: str):
-    """Search the web for information."""
-    search = DuckDuckGoSearchRun()
-    return search.invoke(query)
+    """Search the web for information using Google Search."""
+    try:
+        # Fetch top 5 results
+        results = list(gsearch(query, num_results=5, advanced=True))
+        formatted_results = "\n".join([f"- **{r.title}**: {r.description}" for r in results])
+        return formatted_results if formatted_results else "No relevant results found."
+    except Exception as e:
+        return f"Search error: {str(e)}"
 
 tools = [web_search]
 
@@ -74,7 +79,6 @@ def agent_node(state: AgentState):
         return {"messages": [AIMessage(content="⚠️ API Key missing.")]}
 
     try:
-        # Pass the selected model dynamically
         llm = ChatGoogleGenerativeAI(
             model=selected_model, 
             temperature=0, 
@@ -86,7 +90,6 @@ def agent_node(state: AgentState):
     except Exception as e:
         error_msg = f"❌ **Error with {selected_model}:** {str(e)}"
         
-        # Diagnostic only runs if we crash
         try:
             genai.configure(api_key=api_key)
             available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -103,7 +106,7 @@ def should_continue(state: AgentState) -> Literal["tools", "__end__"]:
         return "tools"
     return "__end__"
 
-# FIX: Removed @st.cache_resource so it rebuilds when dropdown changes!
+# No caching to allow instant model switching
 def create_graph():
     workflow = StateGraph(AgentState)
     workflow.add_node("agent", agent_node)
@@ -139,7 +142,6 @@ with col2:
                     for k, v in event.items():
                         if k == "agent":
                             msg = v["messages"][0]
-                            # Check for errors returned as content
                             if "Error with" in str(msg.content):
                                 st.error(msg.content)
                                 status.update(label="❌ API Error", state="error")
