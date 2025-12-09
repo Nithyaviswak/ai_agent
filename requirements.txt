@@ -3,6 +3,6 @@ langchain
 langchain-google-genai>=1.0.3
 langchain-community
 langgraph
-duckduckgo-search
+duckduckgo-search==6.4.2
 python-dotenv
 google-generativeai
