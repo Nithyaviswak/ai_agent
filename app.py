@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-import time  # <--- NEW IMPORT FOR DELAY
+import time
 from typing import Annotated, Literal, TypedDict
 from langchain_core.tools import tool
 from langchain_core.messages import AIMessage
@@ -38,18 +38,18 @@ def inject_custom_css():
 
 inject_custom_css()
 
-# --- 2. FAILOVER MODEL LIST ---
+# --- 2. FAILOVER MODEL LIST (EXPERIMENTAL ONLY) ---
+# We stick to "exp" models. They support tools AND often have high limits.
 MODEL_PRIORITY_LIST = [
-    "gemini-2.0-flash-exp",    # Experimental often has higher limits than Preview
-    "gemini-exp-1206",         # 1206 Experimental (High Limit)
-    "gemini-2.0-pro-exp-02-05",# Pro Experimental
-    "gemma-3-27b-it",          # 14.4K Daily Limit! (From your table)
-    "gemma-3-12b-it",          # Backup High Limit
+    "gemini-2.0-flash-exp",    # 1. Experimental Flash (Fast, High Limit)
+    "gemini-exp-1206",         # 2. December Experimental (Very Stable)
+    "gemini-2.0-pro-exp-02-05",# 3. Pro Experimental (Smart)
 ]
 
 with st.sidebar:
     st.header("⚙️ Settings")
-    st.success(f"🛡️ **Failover System Active**\n\nUsing Experimental & Gemma models to bypass the 20/day limit.")
+    st.success(f"🛡️ **Failover System Active**\n\nUsing {len(MODEL_PRIORITY_LIST)} Experimental models.")
+
 # --- 3. AGENT LOGIC ---
 @tool
 def web_search(query: str):
@@ -72,21 +72,30 @@ def agent_node(state: AgentState):
     if not api_key:
         return {"messages": [AIMessage(content="⚠️ API Key missing.")]}
 
-    # CRITICAL FIX: SLOW DOWN THE AGENT
-    # We sleep for 10 seconds to ensure we stay under the "5 requests per minute" limit
-    time.sleep(10) 
-
-    try:
-        llm = ChatGoogleGenerativeAI(
-            model=selected_model, 
-            temperature=0, 
-            google_api_key=api_key
-        ).bind_tools(tools)
-        
-        return {"messages": [llm.invoke(state["messages"])]}
-        
-    except Exception as e:
-        return {"messages": [AIMessage(content=f"❌ Error: {str(e)}")]}
+    last_error = ""
+    
+    # LOOP THROUGH EXPERIMENTAL MODELS
+    for model_name in MODEL_PRIORITY_LIST:
+        try:
+            # Throttle slightly
+            time.sleep(2)
+            
+            llm = ChatGoogleGenerativeAI(
+                model=model_name, 
+                temperature=0, 
+                google_api_key=api_key
+            ).bind_tools(tools)
+            
+            response = llm.invoke(state["messages"])
+            return {"messages": [response]}
+            
+        except Exception as e:
+            last_error = str(e)
+            # If rate limit (429) or not found (404), continue to next model
+            continue
+            
+    # If we get here, everything failed
+    return {"messages": [AIMessage(content=f"❌ **System Exhausted.** All models failed.\nLast Error: {last_error}")]}
 
 def should_continue(state: AgentState) -> Literal["tools", "__end__"]:
     last_msg = state["messages"][-1]
@@ -122,14 +131,14 @@ with col1:
 
 with col2:
     if st.session_state.get('run'):
-        with st.status("🔄 **Processing... (Slow Mode Active)**", expanded=True) as status:
+        with st.status("🔄 **Processing (Trying Exp Models)...**", expanded=True) as status:
             inputs = {"messages": [("user", f"Research: '{st.session_state['topic']}'. Write a report.")]}
             try:
                 for event in app.stream(inputs):
                     for k, v in event.items():
                         if k == "agent":
                             msg = v["messages"][0]
-                            if "Error" in str(msg.content):
+                            if "System Exhausted" in str(msg.content):
                                 st.error(msg.content)
                                 status.update(label="❌ API Error", state="error")
                                 st.stop()
