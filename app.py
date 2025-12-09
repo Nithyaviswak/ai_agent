@@ -41,16 +41,15 @@ inject_custom_css()
 # --- 2. MODEL SELECTOR (SIDEBAR) ---
 with st.sidebar:
     st.header("⚙️ Settings")
-    st.markdown("Choose a model. Try '1.5 Flash' for speed:")
+    st.markdown("Choose a model. Use '001' versions for stability:")
     
-    # CRITICAL FIX: Explicitly added 1.5-flash (legacy) which has higher rate limits
     selected_model = st.selectbox(
         "Select AI Model:",
         [
-            "gemini-1.5-flash",        # <--- OLDER BUT FASTER (15 RPM)
-            "gemini-flash-lite-latest",# <--- LITE VERSION (Often good)
-            "gemini-flash-latest",     # (Points to 2.5, strict limit)
-            "gemini-2.0-flash-exp",
+            "gemini-1.5-flash-001",    # <--- EXACT VERSION (Stable)
+            "gemini-1.5-flash-8b",     # <--- LIGHTWEIGHT VERSION (Fast)
+            "gemini-1.5-pro-001",      # <--- PRO VERSION (Smart)
+            "gemini-pro",              # <--- OLD RELIABLE (Gemini 1.0)
         ],
         index=0
     )
