@@ -1,10 +1,10 @@
 import streamlit as st
 import os
+import time  # <--- NEW IMPORT FOR DELAY
 from typing import Annotated, Literal, TypedDict
 from langchain_core.tools import tool
 from langchain_core.messages import AIMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
-import google.generativeai as genai
 from googlesearch import search as gsearch
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
@@ -41,16 +41,12 @@ inject_custom_css()
 # --- 2. MODEL SELECTOR (SIDEBAR) ---
 with st.sidebar:
     st.header("⚙️ Settings")
-    st.markdown("Choose a model. Use '001' versions for stability:")
+    st.markdown("Using 'Flash Latest'. Slow mode enabled to prevent crashes.")
     
+    # We stick to the one model we KNOW works, even if it has limits
     selected_model = st.selectbox(
         "Select AI Model:",
-        [
-            "gemini-1.5-flash-001",    # <--- EXACT VERSION (Stable)
-            "gemini-1.5-flash-8b",     # <--- LIGHTWEIGHT VERSION (Fast)
-            "gemini-1.5-pro-001",      # <--- PRO VERSION (Smart)
-            "gemini-pro",              # <--- OLD RELIABLE (Gemini 1.0)
-        ],
+        ["gemini-flash-latest"], 
         index=0
     )
     st.info(f"Using: **{selected_model}**")
@@ -77,6 +73,10 @@ def agent_node(state: AgentState):
     if not api_key:
         return {"messages": [AIMessage(content="⚠️ API Key missing.")]}
 
+    # CRITICAL FIX: SLOW DOWN THE AGENT
+    # We sleep for 10 seconds to ensure we stay under the "5 requests per minute" limit
+    time.sleep(10) 
+
     try:
         llm = ChatGoogleGenerativeAI(
             model=selected_model, 
@@ -87,18 +87,7 @@ def agent_node(state: AgentState):
         return {"messages": [llm.invoke(state["messages"])]}
         
     except Exception as e:
-        error_msg = f"❌ **Error with {selected_model}:** {str(e)}"
-        
-        # Diagnostic - helps us see what is actually available
-        try:
-            genai.configure(api_key=api_key)
-            available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            formatted_list = "\n".join([f"- `{m}`" for m in available])
-            error_msg += f"\n\n🔍 **Google says your key CAN access these:**\n{formatted_list}"
-        except:
-            error_msg += "\n(Could not list available models)"
-            
-        return {"messages": [AIMessage(content=error_msg)]}
+        return {"messages": [AIMessage(content=f"❌ Error: {str(e)}")]}
 
 def should_continue(state: AgentState) -> Literal["tools", "__end__"]:
     last_msg = state["messages"][-1]
@@ -134,14 +123,14 @@ with col1:
 
 with col2:
     if st.session_state.get('run'):
-        with st.status("🔄 **Processing...**", expanded=True) as status:
+        with st.status("🔄 **Processing... (Slow Mode Active)**", expanded=True) as status:
             inputs = {"messages": [("user", f"Research: '{st.session_state['topic']}'. Write a report.")]}
             try:
                 for event in app.stream(inputs):
                     for k, v in event.items():
                         if k == "agent":
                             msg = v["messages"][0]
-                            if "Error with" in str(msg.content):
+                            if "Error" in str(msg.content):
                                 st.error(msg.content)
                                 status.update(label="❌ API Error", state="error")
                                 st.stop()
