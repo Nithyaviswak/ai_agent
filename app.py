@@ -43,8 +43,6 @@ with st.sidebar:
     st.header("⚙️ Settings")
     st.markdown("Choose a model. Use 'Flash Latest' for high daily limits:")
     
-    # CRITICAL FIX: Put 'gemini-flash-latest' FIRST so it is the default.
-    # It has 1,500 free requests per day (vs 50 for the others).
     selected_model = st.selectbox(
         "Select AI Model:",
         [
@@ -76,6 +74,7 @@ def agent_node(state: AgentState):
         return {"messages": [AIMessage(content="⚠️ API Key missing.")]}
 
     try:
+        # Pass the selected model dynamically
         llm = ChatGoogleGenerativeAI(
             model=selected_model, 
             temperature=0, 
@@ -87,7 +86,7 @@ def agent_node(state: AgentState):
     except Exception as e:
         error_msg = f"❌ **Error with {selected_model}:** {str(e)}"
         
-        # Diagnostic
+        # Diagnostic only runs if we crash
         try:
             genai.configure(api_key=api_key)
             available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -104,7 +103,7 @@ def should_continue(state: AgentState) -> Literal["tools", "__end__"]:
         return "tools"
     return "__end__"
 
-@st.cache_resource
+# FIX: Removed @st.cache_resource so it rebuilds when dropdown changes!
 def create_graph():
     workflow = StateGraph(AgentState)
     workflow.add_node("agent", agent_node)
