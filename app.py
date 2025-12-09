@@ -38,20 +38,18 @@ def inject_custom_css():
 
 inject_custom_css()
 
-# --- 2. ULTIMATE FAILOVER LIST ---
-# We prioritize 1.5 models because they have a separate, large daily quota (1500/day)
+# --- 2. FAILOVER MODEL LIST (Emergency Backup) ---
+# We are prioritizing models that appeared in your "Allowed" list 
+# but are NOT the 2.0/2.5 Flash models you already exhausted.
 MODEL_PRIORITY_LIST = [
-    "gemini-1.5-flash-001",    # 1. High Limit (1500/day) - STABLE
-    "gemini-1.5-flash-8b",     # 2. High Limit - FAST
-    "gemini-1.5-flash",        # 3. Standard Alias
-    "gemini-1.5-pro-001",      # 4. High Intelligence
-    "gemini-pro",              # 5. Legacy 1.0 (Backup)
-    "gemini-2.0-flash-exp",    # 6. (Likely exhausted, but kept as backup)
+    "gemini-exp-1206",         # 1. December Experimental (Often separate quota)
+    "gemini-pro-latest",       # 2. Older Pro version (Might still have quota)
+    "gemini-2.0-pro-exp-02-05",# 3. Pro Experimental (Different bucket than Flash)
 ]
 
 with st.sidebar:
     st.header("⚙️ Settings")
-    st.success(f"🛡️ **Failover System Active**\n\nScanning {len(MODEL_PRIORITY_LIST)} models. Prioritizing 1.5 Flash for stability.")
+    st.success(f"🛡️ **Emergency Mode**\n\nScanning {len(MODEL_PRIORITY_LIST)} backup models.")
 
 # --- 3. AGENT LOGIC ---
 @tool
@@ -77,10 +75,10 @@ def agent_node(state: AgentState):
 
     last_error = ""
     
-    # LOOP THROUGH 1.5 GENERATION MODELS FIRST
+    # FAILOVER LOOP
     for model_name in MODEL_PRIORITY_LIST:
         try:
-            # Throttle slightly
+            # Throttle to be safe
             time.sleep(2)
             
             llm = ChatGoogleGenerativeAI(
@@ -94,12 +92,11 @@ def agent_node(state: AgentState):
             
         except Exception as e:
             last_error = str(e)
-            # Log failure and try next model
             print(f"Failed {model_name}: {last_error}")
             continue
             
-    # If we get here, absolutely everything is dead
-    return {"messages": [AIMessage(content=f"❌ **System Exhausted.** All models failed.\nLast Error: {last_error}")]}
+    # If this hits, you are 100% out of quota for the day.
+    return {"messages": [AIMessage(content=f"❌ **Daily Quota Fully Exhausted.**\nGoogle has blocked all available models for today. Please try again tomorrow after 1:30 PM IST.\n\nLast Error: {last_error}")]}
 
 def should_continue(state: AgentState) -> Literal["tools", "__end__"]:
     last_msg = state["messages"][-1]
@@ -135,16 +132,16 @@ with col1:
 
 with col2:
     if st.session_state.get('run'):
-        with st.status("🔄 **Processing (Scanning 1.5 Models)...**", expanded=True) as status:
+        with st.status("🔄 **Processing (Scanning Backup Models)...**", expanded=True) as status:
             inputs = {"messages": [("user", f"Research: '{st.session_state['topic']}'. Write a report.")]}
             try:
                 for event in app.stream(inputs):
                     for k, v in event.items():
                         if k == "agent":
                             msg = v["messages"][0]
-                            if "System Exhausted" in str(msg.content):
+                            if "Daily Quota Fully Exhausted" in str(msg.content):
                                 st.error(msg.content)
-                                status.update(label="❌ API Error", state="error")
+                                status.update(label="❌ Quota Exceeded", state="error")
                                 st.stop()
                             
                             if hasattr(msg, 'tool_calls') and msg.tool_calls:
