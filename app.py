@@ -41,17 +41,17 @@ inject_custom_css()
 # --- 2. MODEL SELECTOR (SIDEBAR) ---
 with st.sidebar:
     st.header("⚙️ Settings")
-    st.markdown("Use 'Latest' models for highest free limits:")
+    st.markdown("Choose a model. Use 'Flash Latest' for high daily limits:")
     
-    # CRITICAL UPDATE: Using the generic aliases that usually have 1500 req/day limits
+    # CRITICAL FIX: Put 'gemini-flash-latest' FIRST so it is the default.
+    # It has 1,500 free requests per day (vs 50 for the others).
     selected_model = st.selectbox(
         "Select AI Model:",
         [
-            "gemini-flash-latest",   # <--- THE STABLE WORKHORSE (High Limit)
-            "gemini-pro-latest",     # <--- SMARTER STABLE MODEL
-            "gemini-2.5-flash",      # <--- BRAND NEW (Might work)
-            "gemini-2.0-flash-lite-preview-02-05",
-            "gemini-2.0-flash"
+            "gemini-flash-latest",   # <--- BEST OPTION (Stable, High Limits)
+            "gemini-2.5-flash",      # <--- Newest Version
+            "gemini-2.0-flash-lite-preview-02-05", 
+            "gemini-pro",            # <--- Good backup
         ],
         index=0
     )
