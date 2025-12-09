@@ -40,11 +40,11 @@ inject_custom_css()
 
 # --- 2. FAILOVER MODEL LIST ---
 MODEL_PRIORITY_LIST = [
-    "gemini-2.0-flash-exp",    
-    "gemini-exp-1206",         
-    "gemini-2.0-pro-exp-02-05",
-    "gemma-3-27b-it",         
-    "gemma-3-12b-it",          
+    "gemini-2.5-flash-live",    
+    "gemini-2.0-flash-live",         
+    "gemma-3-12b",
+    "gemma-3-27b",         
+    "gemma-3-4b",          
 ]
 
 with st.sidebar:
