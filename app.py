@@ -38,20 +38,16 @@ def inject_custom_css():
 
 inject_custom_css()
 
-# --- 2. FAILOVER MODEL LIST (Emergency Backup) ---
-# We are prioritizing models that appeared in your "Allowed" list 
-# but are NOT the 2.0/2.5 Flash models you already exhausted.
 MODEL_PRIORITY_LIST = [
-    "gemini-exp-1206",         # 1. December Experimental (Often separate quota)
-    "gemini-pro-latest",       # 2. Older Pro version (Might still have quota)
-    "gemini-2.0-pro-exp-02-05",# 3. Pro Experimental (Different bucket than Flash)
+    "gemini-flash-latest",      
+    "gemini-pro-latest",       
+    "gemini-2.0-pro-exp-02-05",
 ]
 
 with st.sidebar:
     st.header("⚙️ Settings")
     st.success(f"🛡️ **Emergency Mode**\n\nScanning {len(MODEL_PRIORITY_LIST)} backup models.")
 
-# --- 3. AGENT LOGIC ---
 @tool
 def web_search(query: str):
     """Search the web for information using Google Search."""
