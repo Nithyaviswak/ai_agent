@@ -10,6 +10,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langgraph.graph.message import add_messages
 from dotenv import load_dotenv
+from langchain_core.messages import SystemMessage
 
 # Load environment variables
 load_dotenv()
@@ -65,6 +66,14 @@ class AgentState(TypedDict):
 
 def agent_node(state: AgentState):
     api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
+    sys_msg = SystemMessage(content="""
+        You are a Senior Healthcare Research Analyst. 
+        Your reports must be:
+        1. Highly detailed and technical.
+        2. Focused on the latest 2024-2025 trends (Generative AI, Agents).
+        3. FACTUAL: Always cite your sources (e.g., [Source: TechCrunch]).
+        4. Structured: Use clear headers, bullet points, and bold text.
+    """)
     
     if not api_key:
         return {"messages": [AIMessage(content="⚠️ API Key missing.")]}
